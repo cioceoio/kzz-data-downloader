@@ -1,0 +1,102 @@
+name: 可转债历史数据下载器 with WeChat通知
+
+on:
+  schedule:
+    # 每月1日执行 (UTC时间8:15 = 北京时间16:15)
+    - cron: '15 8 1 * *'
+  workflow_dispatch: # 支持手动触发
+
+permissions:
+  contents: write  # 允许写入仓库内容
+
+jobs:
+  download-convertible-bonds:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取完整Git历史，用于提交
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests
+
+    - name: Download Convertible Bonds data
+      env:
+        WECHAT_WEBHOOK: ${{ secrets.WECHAT_WEBHOOK }}
+      run: python3 github_actions_kzz.py
+    
+    - name: Commit and push CSV files to repository
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+        # 检查是否有CSV文件
+        if ls *.csv 1> /dev/null 2>&1; then
+          echo "发现CSV文件，准备提交到仓库..."
+
+          # 创建数据目录（如果不存在）
+          mkdir -p data/csv
+
+          # 移动CSV文件到数据目录
+          mv *.csv data/csv/
+
+          # 添加文件到Git
+          git add data/csv/
+
+          # 检查是否有变更
+          if git diff --staged --quiet; then
+            echo "没有新的CSV文件需要提交"
+          else
+            # 提交变更
+            COMMIT_MESSAGE="可转债历史数据更新 - $(date -d '+8 hours' '+%Y-%m-%d %H:%M:%S')"
+            git commit -m "$COMMIT_MESSAGE"
+
+            # 推送到仓库
+            git push
+
+            echo "✅ CSV文件已成功保存到仓库"
+          fi
+        else
+          echo "❌ 未找到CSV文件，跳过提交"
+        fi
+
+    - name: Display execution summary
+      if: always()
+      run: |
+        echo "## 📊 可转债历史数据下载执行报告" >> $GITHUB_STEP_SUMMARY
+        echo "| 执行时间 | 北京时间 | 状态 |" >> $GITHUB_STEP_SUMMARY
+        echo "|---------|----------|------|" >> $GITHUB_STEP_SUMMARY
+
+        echo "| $(date -u '+%Y-%m-%d %H:%M:%S') UTC | $(date -d '+8 hours' '+%Y-%m-%d %H:%M:%S') Beijing | ✅ 完成 |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        echo "### 📁 生成的文件" >> $GITHUB_STEP_SUMMARY
+
+        # 检查数据目录中的CSV文件
+        if [ -d "data/csv" ] && ls data/csv/*.csv 1> /dev/null 2>&1; then
+          echo "✅ 成功生成并保存到仓库的可转债CSV文件：" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 文件名 | 大小 | 仓库路径 |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|------|----------|" >> $GITHUB_STEP_SUMMARY
+
+          for file in data/csv/*.csv; do
+            filename=$(basename "$file")
+            size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo "unknown")
+            echo "| $filename | $size bytes | data/csv/$filename |" >> $GITHUB_STEP_SUMMARY
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📁 **仓库访问路径：** https://github.com/${{ github.repository }}/tree/main/data/csv/" >> $GITHUB_STEP_SUMMARY
+          echo "🔔 **微信通知：** 已配置异常状态推送" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ 未生成CSV文件" >> $GITHUB_STEP_SUMMARY
+        fi
