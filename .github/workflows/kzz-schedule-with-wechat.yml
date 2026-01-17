@@ -39,15 +39,12 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
 
-        # 检查是否有CSV文件
-        if ls *.csv 1> /dev/null 2>&1; then
+        # 检查data/csv目录是否有CSV文件
+        if ls data/csv/*.csv 1> /dev/null 2>&1; then
           echo "发现CSV文件，准备提交到仓库..."
 
-          # 创建数据目录（如果不存在）
+          # 确保数据目录存在
           mkdir -p data/csv
-
-          # 移动CSV文件到数据目录
-          mv *.csv data/csv/
 
           # 添加文件到Git
           git add data/csv/
