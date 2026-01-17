@@ -149,9 +149,9 @@ def main():
     # 从配置文件读取可转债列表（优先使用CSV格式）
     stock_list = []
     
-    # 尝试从CSV配置文件读取
+    # 尝试从TXT配置文件读取
     try:
-        with open('config.csv', 'r', encoding='utf-8') as f:
+        with open('config.txt', 'r', encoding='utf-8') as f:
             reader = csv.reader(f)
             next(reader)  # 跳过表头
             for row in reader:
@@ -161,9 +161,9 @@ def main():
                     if code and name:
                         stock_list.append((code, name))
         if stock_list:
-            print(f"从CSV配置文件成功读取 {len(stock_list)} 条可转债数据")
+            print(f"从TXT配置文件成功读取 {len(stock_list)} 条可转债数据")
     except Exception as e:
-        print(f"读取CSV配置文件失败: {e}")
+        print(f"读取TXT配置文件失败: {e}")
     
     # 如果CSV读取失败或为空，尝试从JSON配置文件读取
     if not stock_list:
