@@ -107,14 +107,13 @@ def get_stock_data(stock_code="113646", stock_name="永吉转债"):
                             }
                         else:
                             print(f"⚠ {filename} - 无有效数据")
-                            return {"success": False, "error": "无有效数据"}
+                            return {"success": False, "error": "无有效数据", "error_type": "no_valid_data", "stock": f"{stock_code} {stock_name}"}
                     else:
                         print(f"⚠ {stock_code} {stock_name} - API返回空数据")
-                        # 发送微信通知 - 数据为空
-                        # notifier.notify_data_empty(stock_code)
-                        return {"success": False, "error": "API返回空数据"}
+                        return {"success": False, "error": "API返回空数据", "error_type": "empty_data", "stock": f"{stock_code} {stock_name}"}
                 except json.JSONDecodeError as e:
-                    print(f"⚠ 数据解析异常: {e}")
+                    print(f"⚠ {stock_code} {stock_name} - 数据解析异常: {e}")
+                    # 数据解析异常，继续下一次重试
                     continue
             else:
                 print(f"❌ 请求失败，状态码：{response.status_code}")
@@ -122,25 +121,16 @@ def get_stock_data(stock_code="113646", stock_name="永吉转债"):
         except requests.exceptions.RequestException as e:
             error_msg = f"网络异常: {e}"
             print(f"❌ {error_msg} (第{retry+1}次)")
-            # 发送微信通知 - API异常
-            if retry == 2:  # 只在最后一次重试失败时发送通知
-                notifier.notify_api_failure(stock_code, error_msg)
         except Exception as e:
             error_msg = f"未知异常: {e}"
             print(f"❌ {error_msg} (第{retry+1}次)")
-            # 检查是否是IP被封的迹象，只在最后一次重试时发送通知
-            if retry == 2:
-                if "timeout" in str(e).lower() or "connection" in str(e).lower():
-                    notifier.notify_ip_blocked(stock_code)
-                else:
-                    notifier.notify_api_failure(stock_code, error_msg)
         
         if retry < 2:
             wait_time = (retry + 1) * 2
             print(f"⏳ 等待 {wait_time} 秒后重试...")
             time.sleep(wait_time)
     
-    return {"success": False, "error": "所有重试均失败"}
+    return {"success": False, "error": "所有重试均失败", "error_type": "api_failure", "stock": f"{stock_code} {stock_name}"}
 
 def main():
     """主执行函数"""
@@ -207,14 +197,39 @@ def main():
     print(f"✅ 成功: {success_count}/{total_count}")
     print(f"❌ 失败: {total_count - success_count}/{total_count}")
     
-    # 收集失败的可转债信息
+    # 收集失败的可转债信息，按错误类型分类
     failed_stocks = []
+    empty_data_stocks = []
+    api_failure_stocks = []
+    other_error_stocks = []
+    
     for result in results:
         if not result["success"]:
-            failed_stocks.append(result.get("stock", "未知可转债"))
+            stock_info = result.get("stock", "未知可转债")
+            failed_stocks.append(stock_info)
+            
+            # 按错误类型分类
+            error_type = result.get("error_type", "other")
+            if error_type == "empty_data":
+                empty_data_stocks.append(stock_info)
+            elif error_type == "api_failure":
+                api_failure_stocks.append(stock_info)
+            else:
+                other_error_stocks.append(stock_info)
     
-    # 发送微信通知 - 执行总结
-    #notifier.notify_batch_summary(total_count, success_count, failed_stocks)
+    # 统一发送微信通知
+    if failed_stocks:
+        # 构建详细的错误信息
+        error_details = []
+        if empty_data_stocks:
+            error_details.append(f"📉 API返回空数据: {', '.join(empty_data_stocks[:5])}{'...' if len(empty_data_stocks) > 5 else ''}")
+        if api_failure_stocks:
+            error_details.append(f"🚨 API请求失败: {', '.join(api_failure_stocks[:5])}{'...' if len(api_failure_stocks) > 5 else ''}")
+        if other_error_stocks:
+            error_details.append(f"⚠️ 其他错误: {', '.join(other_error_stocks[:5])}{'...' if len(other_error_stocks) > 5 else ''}")
+        
+        # 发送总结通知
+        notifier.notify_batch_summary(total_count, success_count, failed_stocks)
     
     # 显示执行结果（不生成报告文件）
     print(f"\n📊 执行完成！")
