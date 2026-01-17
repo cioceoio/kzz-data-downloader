@@ -2,8 +2,8 @@ name: 可转债历史数据下载器 with WeChat通知
 
 on:
   schedule:
-    # 每月1日执行 (UTC时间8:15 = 北京时间16:15)
-    - cron: '15 8 1 * *'
+    # 每月1日执行 (UTC时间6:15 = 北京时间14:15)
+    - cron: '15 6 18 * *'
   workflow_dispatch: # 支持手动触发
 
 permissions:
