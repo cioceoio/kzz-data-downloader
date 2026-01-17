@@ -9,12 +9,32 @@ import csv
 import glob
 from datetime import datetime
 
-def merge_csv_files(input_dir="data/csv", output_dir="data/csv"):
+def merge_csv_files(input_dir=None, output_dir=None):
     """
     合并CSV文件
-    :param input_dir: 输入目录，默认data/csv
-    :param output_dir: 输出目录，默认data/csv
+    :param input_dir: 输入目录，默认自动选择（先尝试data/csv，不存在则使用当前目录）
+    :param output_dir: 输出目录，默认与输入目录相同
     """
+    # 自动选择目录逻辑
+    if input_dir is None:
+        # 检查data/csv目录是否存在且有CSV文件
+        data_csv_path = "data/csv"
+        if os.path.exists(data_csv_path):
+            csv_files_in_data = glob.glob(os.path.join(data_csv_path, "*.csv"))
+            if csv_files_in_data:
+                input_dir = data_csv_path
+                print(f"📂 自动选择目录: {input_dir} (发现 {len(csv_files_in_data)} 个CSV文件)")
+            else:
+                input_dir = "."
+                print("📂 自动选择目录: 当前目录 (data/csv存在但无CSV文件)")
+        else:
+            input_dir = "."
+            print("📂 自动选择目录: 当前目录 (data/csv不存在)")
+    
+    # 设置输出目录（默认与输入目录相同）
+    if output_dir is None:
+        output_dir = input_dir
+    
     # 确保输出目录存在
     os.makedirs(output_dir, exist_ok=True)
     
@@ -116,7 +136,7 @@ def merge_csv_files(input_dir="data/csv", output_dir="data/csv"):
                     
                     # 检查文件是否已存在
                     if os.path.exists(merged_path):
-                        print(f"ℹ️ 文件已存在，跳过合并: {merged_filename}")
+                        #print(f"ℹ️ 文件已存在，跳过合并: {merged_filename}")
                         continue
                     
                     # 保存合并后的数据
