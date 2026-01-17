@@ -24,7 +24,7 @@ mkdir -p .github/workflows
 cp kzz-schedule-with-wechat.yml .github/workflows/
 
 # 程序文件
-cp github_actions_etf.py .
+cp github_actions_kzz.py .
 cp wechat_notifier.py .
 
 # 提交到仓库
@@ -43,7 +43,7 @@ repository/
 ├── .github/workflows/
 │   └── kzz-schedule-with-wechat.yml   # 工作流配置
 ├── data/csv/                          # 数据存储目录
-├── github_actions_etf.py              # 主程序
+├── github_actions_kzz.py              # 主程序
 └── wechat_notifier.py                 # 微信通知模块
 ```
 
